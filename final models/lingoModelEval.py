@@ -8,7 +8,18 @@ import torch.nn.functional as F
 from werkzeug.utils import secure_filename
 
 # Initialize Flask app
+from flask import Flask, request
 app = Flask(__name__)
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'audio' not in request.files:
+        return 'No audio file part'
+    file = request.files['audio']
+    if file.filename == '':
+        return 'No selected file'
+    file.save(f'./uploads/{file.filename}')
+    return 'File uploaded successfully'
 
 # Initialize the MFCC transform and VAD (Voice Activity Detection)
 transform = T.MFCC(sample_rate=16000, n_mfcc=13)
