@@ -3,12 +3,25 @@ import torch
 import torchaudio
 import torchaudio.transforms as T
 from final_models.lingo_model2 import SpeechModel
+from final_models.lingoModelEval import evaluate
+
 import os
 import torch.nn.functional as F
 from werkzeug.utils import secure_filename
 
 # Initialize Flask app
+from flask import Flask, request
 app = Flask(__name__)
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'audio' not in request.files:
+        return 'No audio file part'
+    file = request.files['audio']
+    if file.filename == '':
+        return 'No selected file'
+    file.save(f'./uploads/{file.filename}')
+    return 'File uploaded successfully'
 
 # Initialize the MFCC transform and VAD (Voice Activity Detection)
 transform = T.MFCC(sample_rate=16000, n_mfcc=13)
@@ -63,7 +76,7 @@ def calculate_scaled_similarity(predicted_score, min_score=0.0, max_score=1.0):
     similarity = max(0, min(100, normalized * 100))
     return similarity
 
-@app.route('/evaluate', methods=['POST'])
+@app.route('/')
 def evaluate():
     try:
         # Log the incoming request data
@@ -135,4 +148,4 @@ def evaluate():
 
 
 if __name__ == '__main__':
-    app.run(host='192.168.1.2', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
