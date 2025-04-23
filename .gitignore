@@ -1,0 +1,19 @@
+# Python-specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+*.env
+
+# IDE-specific
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Other
+temp/
+speechbrain/
