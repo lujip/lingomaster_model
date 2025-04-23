@@ -63,7 +63,7 @@ def calculate_scaled_similarity(predicted_score, min_score=0.0, max_score=1.0):
     similarity = max(0, min(100, normalized * 100))
     return similarity
 
-@app.route('/evaluate', methods=['POST'])
+@app.route('/')
 def evaluate():
     try:
         # Log the incoming request data
@@ -135,4 +135,4 @@ def evaluate():
 
 
 if __name__ == '__main__':
-    app.run(host='192.168.1.2', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
