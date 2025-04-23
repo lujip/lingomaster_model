@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import torch
 import torchaudio
 import torchaudio.transforms as T
-from final_models.lingo_model2 import SpeechModel
+from lingo_model2 import SpeechModel
 import os
 import torch.nn.functional as F
 from werkzeug.utils import secure_filename
@@ -11,7 +11,10 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request
 app = Flask(__name__)
 
-@app.route('/upload', methods=['POST'])
+@app.route('/')
+def home():
+    return "Server is running!"
+
 def upload_file():
     if 'audio' not in request.files:
         return 'No audio file part'
@@ -74,7 +77,7 @@ def calculate_scaled_similarity(predicted_score, min_score=0.0, max_score=1.0):
     similarity = max(0, min(100, normalized * 100))
     return similarity
 
-@app.route('/')
+@app.route('/upload', methods=['POST'])
 def evaluate():
     try:
         # Log the incoming request data
