@@ -135,6 +135,7 @@ def evaluate():
             "scaled_similarity": scale_sim,
             "blended_similarity": blended_sim,
         }
+        del model
 
         return jsonify(result)
 
