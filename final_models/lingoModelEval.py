@@ -50,6 +50,8 @@ def predict(audio_input, model):
     waveform = preprocess_waveform(audio_input)
     mfcc = transform(waveform)
     mfcc = mfcc.squeeze(0).unsqueeze(0)
+    print("MFCC shape:", mfcc.shape)
+    print("MFCC sum:", mfcc.sum().item())
 
     if mfcc.abs().sum() == 0:
         print("⚠️ Empty or silent input detected. Skipping prediction.")
@@ -62,6 +64,7 @@ def predict(audio_input, model):
 
 def calculate_similarity(predicted_score, target_score=1.0):
     similarity = 100 * (1 - abs(predicted_score - target_score))
+    print(f"Similarity raw diff: {abs(predicted_score - 1.0)}")
     return max(0, min(100, similarity))
 
 def calculate_cosine_similarity(predicted_score, target_score):
@@ -116,6 +119,8 @@ def evaluate():
         audio_file.save(file_path)
 
         predicted_score = predict(file_path, model)
+        print(f"Predicted score: {predicted_score}")
+
         similarity = calculate_similarity(predicted_score)
 
         cosine_sim = calculate_cosine_similarity(predicted_score, target_score=1)

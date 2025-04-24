@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import torch
 import torchaudio
 import torchaudio.transforms as T
-from final_models.lingo_model2 import SpeechModel
+from lingo_model2 import SpeechModel
 import os
 import torch.nn.functional as F
 from werkzeug.utils import secure_filename
