@@ -2,12 +2,11 @@ from flask import Flask, request, jsonify
 import torch
 import torchaudio
 import torchaudio.transforms as T
-from lingo_model2 import SpeechModel
+from final_models.lingo_model2 import SpeechModel
 import os
 import torch.nn.functional as F
 from werkzeug.utils import secure_filename
 
-# Initialize Flask app
 from flask import Flask, request
 app = Flask(__name__)
 
@@ -24,7 +23,6 @@ def upload_file():
     file.save(f'./uploads/{file.filename}')
     return 'File uploaded successfully'
 
-# Initialize the MFCC transform and VAD (Voice Activity Detection)
 transform = T.MFCC(sample_rate=16000, n_mfcc=13)
 vad = T.Vad(sample_rate=16000)
 
@@ -38,7 +36,7 @@ def preprocess_waveform(audio_path):
         resampler = T.Resample(orig_freq=sample_rate, new_freq=16000)
         waveform = resampler(waveform)
 
-    waveform = vad(waveform)  # Apply VAD if needed
+    waveform = vad(waveform) 
 
     return waveform
 
@@ -80,11 +78,9 @@ def calculate_scaled_similarity(predicted_score, min_score=0.0, max_score=1.0):
 @app.route('/upload', methods=['POST'])
 def evaluate():
     try:
-        # Log the incoming request data
         print(f"Request data: {request.form}")
         print(f"Request files: {request.files}")
 
-        # Check for missing data
         if 'audio' not in request.files:
             print("Missing audio file")
             return "Missing audio file", 400
@@ -95,7 +91,7 @@ def evaluate():
         audio_file = request.files['audio']
         selected_word = request.form['selected_word']
 
-        # just for debug
+        #just for debug
         print(f"Received word: {selected_word}")
         print(f"Received file: {audio_file.filename}")
         os.makedirs("temp", exist_ok=True)
@@ -104,35 +100,29 @@ def evaluate():
         file_path = os.path.join("temp", filename)
         
 
-        # Generate the model path based on the selected word
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))  # go one level up
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
         model_path = os.path.join(base_dir, "model", f"{selected_word}_speech_model.pth")
         print(f"Looking for model at: {model_path}")
         if not os.path.exists(model_path):
            print("Model not found.")
            return jsonify({"error": f"Model for '{selected_word}' not found"}), 400
         
-        # Load the model dynamically
         model = SpeechModel(input_dim=13)
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         model.eval()
 
-        # Save the recording to a temporary file
         filename = secure_filename(audio_file.filename)
         file_path = os.path.join("temp", filename)
         audio_file.save(file_path)
 
-        # Evaluate the recording
         predicted_score = predict(file_path, model)
         similarity = calculate_similarity(predicted_score)
 
         cosine_sim = calculate_cosine_similarity(predicted_score, target_score=1)
         scale_sim = calculate_scaled_similarity(predicted_score)
 
-        # Calculate blended similarity score
         blended_sim = (cosine_sim + similarity) / 2
 
-        # Return the evaluation results as JSON
         result = {
             "predicted_score": predicted_score,
             "similarity": similarity,
