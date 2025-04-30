@@ -35,7 +35,6 @@ A high-quality English speech dataset with recordings from 109 speakers with var
 | Feature Extraction | `librosa`, `scipy`  |
 | Model Training      | `PyTorch`            |
 | Audio Handling     | `torchaudio`, `wave` |
-| Evaluation         | `NumPy`, `sklearn`   |
 | API Serving (if used) | `Render`|
 
 ---
