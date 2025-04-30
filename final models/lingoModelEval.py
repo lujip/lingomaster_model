@@ -1,28 +1,15 @@
-from flask import Flask, request, jsonify
 import torch
 import torchaudio
 import torchaudio.transforms as T
-from lingo_model2 import SpeechModel
 import os
 import torch.nn.functional as F
-from werkzeug.utils import secure_filename
+from lingo_model2 import SpeechModel
 
-from flask import Flask, request
-app = Flask(__name__)
+# Fixed input
+audio_file = r'D:\Code research\AI Model\Lingomaster_Model\p226_p226_001.wav'
+selected_word = 'phrase001'
 
-@app.route('/')
-def home():
-    return "Server is running!"
-
-def upload_file():
-    if 'audio' not in request.files:
-        return 'No audio file part'
-    file = request.files['audio']
-    if file.filename == '':
-        return 'No selected file'
-    file.save(f'./uploads/{file.filename}')
-    return 'File uploaded successfully'
-
+# Transforms and VAD
 transform = T.MFCC(sample_rate=16000, n_mfcc=13)
 vad = T.Vad(sample_rate=16000)
 
@@ -37,14 +24,7 @@ def preprocess_waveform(audio_path):
         waveform = resampler(waveform)
 
     waveform = vad(waveform) 
-
     return waveform
-
-def extract_mfcc(audio_path):
-    waveform = preprocess_waveform(audio_path)
-    mfcc = transform(waveform).squeeze(0)
-    mfcc = mfcc[:, :300] if mfcc.size(1) > 300 else torch.nn.functional.pad(mfcc, (0, 300 - mfcc.size(1)))
-    return mfcc.unsqueeze(0)
 
 def predict(audio_input, model):
     waveform = preprocess_waveform(audio_input)
@@ -75,68 +55,30 @@ def calculate_scaled_similarity(predicted_score, min_score=0.0, max_score=1.0):
     similarity = max(0, min(100, normalized * 100))
     return similarity
 
-@app.route('/upload', methods=['POST'])
-def evaluate():
-    try:
-        print(f"Request data: {request.form}")
-        print(f"Request files: {request.files}")
+# Load model
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
+model_path = os.path.join(base_dir, "model", f"{selected_word}_speech_model.pth")
 
-        if 'audio' not in request.files:
-            print("Missing audio file")
-            return "Missing audio file", 400
-        if 'selected_word' not in request.form:
-            print("Missing selected word")
-            return "Missing selected word", 400
-        
-        audio_file = request.files['audio']
-        selected_word = request.form['selected_word']
+if not os.path.exists(model_path):
+    print(f"Model for '{selected_word}' not found at {model_path}")
+else:
+    model = SpeechModel(input_dim=13)
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    model.eval()
 
-        #just for debug
-        print(f"Received word: {selected_word}")
-        print(f"Received file: {audio_file.filename}")
-        os.makedirs("temp", exist_ok=True)
-        
-        filename = secure_filename(audio_file.filename)
-        file_path = os.path.join("temp", filename)
-        
+    predicted_score = predict(audio_file, model)
+    similarity = calculate_similarity(predicted_score)
+    cosine_sim = calculate_cosine_similarity(predicted_score, target_score=1)
+    scale_sim = calculate_scaled_similarity(predicted_score)
+    blended_sim = 0.8 * similarity + 0.2 * cosine_sim
 
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
-        model_path = os.path.join(base_dir, "model", f"{selected_word}_speech_model.pth")
-        print(f"Looking for model at: {model_path}")
-        if not os.path.exists(model_path):
-           print("Model not found.")
-           return jsonify({"error": f"Model for '{selected_word}' not found"}), 400
-        
-        model = SpeechModel(input_dim=13)
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-        model.eval()
+    result = {
+        "predicted_score": predicted_score,
+        "similarity": similarity,
+        "scaled_similarity": scale_sim,
+        "blended_similarity": blended_sim,
+    }
 
-        filename = secure_filename(audio_file.filename)
-        file_path = os.path.join("temp", filename)
-        audio_file.save(file_path)
-
-        predicted_score = predict(file_path, model)
-        similarity = calculate_similarity(predicted_score)
-
-        cosine_sim = calculate_cosine_similarity(predicted_score, target_score=1)
-        scale_sim = calculate_scaled_similarity(predicted_score)
-
-        blended_sim = (cosine_sim + similarity) / 2
-
-        result = {
-            "predicted_score": predicted_score,
-            "similarity": similarity,
-            "cosine_similarity": cosine_sim,
-            "scaled_similarity": scale_sim,
-            "blended_similarity": blended_sim,
-        }
-
-        return jsonify(result)
-
-    except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        return jsonify({"error": str(e)}), 400
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("Evaluation result:")
+    for key, value in result.items():
+        print(f"{key}: {value:.2f}")
